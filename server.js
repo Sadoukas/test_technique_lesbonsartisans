@@ -1,9 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3001",
+    methods: ["GET", "POST"]
+  }
+});
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -28,6 +37,15 @@ async function connectToDatabase() {
     process.exit(1);
   }
 }
+
+// Configuration Socket.io
+io.on('connection', (socket) => {
+  console.log('🔌 Client connecté:', socket.id);
+  
+  socket.on('disconnect', () => {
+    console.log('🔌 Client déconnecté:', socket.id);
+  });
+});
 
 // Routes de base
 app.get('/', (req, res) => {
@@ -74,12 +92,14 @@ app.use((req, res) => {
 async function startServer() {
   await connectToDatabase();
   
-  // Passer la base de données aux routes
+  // Passer la base de données et Socket.io aux routes
   app.locals.db = db;
+  app.locals.io = io;
   
-  app.listen(PORT, () => {
+  server.listen(PORT, () => {
     console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     console.log(`📱 API disponible sur: http://localhost:${PORT}`);
+    console.log(`🔌 WebSocket disponible sur: ws://localhost:${PORT}`);
     console.log(`🔗 Documentation: http://localhost:${PORT}`);
   });
 }

@@ -31,6 +31,7 @@ import {
   Phone as PhoneIcon
 } from '@mui/icons-material';
 import { ProductService } from './services/ProductService';
+import webSocketService from './services/WebSocketService';
 
 // Thème Material UI personnalisé
 const theme = createTheme({
@@ -62,6 +63,33 @@ function App() {
   // Charger les produits au démarrage
   useEffect(() => {
     loadProducts();
+    
+    // Configuration des écouteurs WebSocket
+    webSocketService.onProductCreated((newProduct) => {
+      console.log('🆕 Nouveau produit créé:', newProduct);
+      setProducts(prevProducts => [...prevProducts, newProduct]);
+    });
+
+    webSocketService.onProductUpdated((updatedProduct) => {
+      console.log('✏️ Produit mis à jour:', updatedProduct);
+      setProducts(prevProducts => 
+        prevProducts.map(product => 
+          product._id === updatedProduct._id ? updatedProduct : product
+        )
+      );
+    });
+
+    webSocketService.onProductDeleted(({ id }) => {
+      console.log('🗑️ Produit supprimé:', id);
+      setProducts(prevProducts => 
+        prevProducts.filter(product => product._id !== id)
+      );
+    });
+
+    // Nettoyage à la déconnexion
+    return () => {
+      webSocketService.disconnect();
+    };
   }, []);
 
   const loadProducts = async () => {
