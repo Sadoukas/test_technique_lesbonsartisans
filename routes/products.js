@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 
-// Middleware pour récupérer la base de données
+// Middleware pour récupérer la base de données et Socket.io
 router.use((req, res, next) => {
   req.db = req.app.locals.db;
+  req.io = req.app.locals.io;
   if (!req.db) {
     return res.status(500).json({
       success: false,
@@ -88,6 +89,11 @@ router.post('/', async (req, res) => {
     
     const result = await req.db.collection('products').insertOne(newProduct);
     
+    // Émettre un événement Socket.io pour notifier les clients
+    if (req.io) {
+      req.io.emit('product_created', newProduct);
+    }
+    
     res.status(201).json({
       success: true,
       message: 'Produit créé avec succès',
@@ -127,6 +133,11 @@ router.put('/:id', async (req, res) => {
     // Récupérer le produit mis à jour
     const updatedProduct = await req.db.collection('products').findOne({ _id: productId });
     
+    // Émettre un événement Socket.io pour notifier les clients
+    if (req.io) {
+      req.io.emit('product_updated', updatedProduct);
+    }
+    
     res.json({
       success: true,
       message: 'Produit modifié avec succès',
@@ -154,6 +165,11 @@ router.delete('/:id', async (req, res) => {
         error: 'Produit non trouvé',
         id: productId
       });
+    }
+    
+    // Émettre un événement Socket.io pour notifier les clients
+    if (req.io) {
+      req.io.emit('product_deleted', { id: productId });
     }
     
     res.json({
